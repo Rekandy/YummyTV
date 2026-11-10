@@ -9,6 +9,7 @@ import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Subtitles
+import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.ui.graphics.vector.ImageVector
 import su.afk.yummy.tv.feature.settings.model.SettingsTab
@@ -24,5 +25,6 @@ internal val SettingsTab.icon: ImageVector
         SettingsTab.SUBTITLES -> Icons.Outlined.Subtitles
         SettingsTab.STORAGE -> Icons.Outlined.Storage
         SettingsTab.API -> Icons.Outlined.Key
+        SettingsTab.LIST_SYNC -> Icons.Outlined.SwapHoriz
         SettingsTab.ABOUT -> Icons.Outlined.Info
     }

@@ -47,6 +47,11 @@ import su.afk.yummy.tv.core.storage.maintenance.StorageCleanup
 import su.afk.yummy.tv.core.utils.system.CacheStorageInspector
 import su.afk.yummy.tv.core.utils.system.ImageCacheCleaner
 import su.afk.yummy.tv.core.utils.system.CacheStorageReport
+import su.afk.yummy.tv.domain.library.usecase.BuildExportFileUseCase
+import su.afk.yummy.tv.domain.library.usecase.GetLocalLibraryAsExternalEntriesUseCase
+import su.afk.yummy.tv.domain.library.usecase.ImportEntriesUseCase
+import su.afk.yummy.tv.domain.library.usecase.MatchImportEntriesUseCase
+import su.afk.yummy.tv.domain.library.usecase.ParseImportFileUseCase
 import su.afk.yummy.tv.domain.update.model.AppReleaseNotes
 import su.afk.yummy.tv.domain.update.repository.UpdateRepository
 import su.afk.yummy.tv.domain.update.usecase.GetAppReleaseHistoryUseCase
@@ -85,6 +90,11 @@ class SettingsViewModelTest : BaseUnitTest() {
     private val appLogExporter: AppLogExporter = mockk()
     private val updateRepository: UpdateRepository = mockk()
     private val analyticsDeviceIdProvider: AnalyticsDeviceIdProvider = mockk()
+    private val parseImportFile: ParseImportFileUseCase = mockk(relaxed = true)
+    private val matchImportEntries: MatchImportEntriesUseCase = mockk(relaxed = true)
+    private val importEntries: ImportEntriesUseCase = mockk(relaxed = true)
+    private val getLocalLibraryAsExternalEntries: GetLocalLibraryAsExternalEntriesUseCase = mockk(relaxed = true)
+    private val buildExportFile: BuildExportFileUseCase = mockk(relaxed = true)
 
     private val snapshot = MutableStateFlow(snapshot())
     private val saveLastSearch = MutableStateFlow(false)
@@ -136,6 +146,11 @@ class SettingsViewModelTest : BaseUnitTest() {
         appLogExporter = appLogExporter,
         getAppReleaseHistory = GetAppReleaseHistoryUseCase(updateRepository),
         analyticsDeviceIdProvider = analyticsDeviceIdProvider,
+        parseImportFile = parseImportFile,
+        matchImportEntries = matchImportEntries,
+        importEntries = importEntries,
+        getLocalLibraryAsExternalEntries = getLocalLibraryAsExternalEntries,
+        buildExportFile = buildExportFile,
         versionName = "1.0.0",
     )
 

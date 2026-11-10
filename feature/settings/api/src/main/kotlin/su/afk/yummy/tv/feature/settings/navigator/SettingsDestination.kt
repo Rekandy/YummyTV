@@ -24,6 +24,7 @@ enum class SettingsCategory {
     SUBTITLES,
     STORAGE,
     API,
+    LIST_SYNC,
 }
 
 @Serializable

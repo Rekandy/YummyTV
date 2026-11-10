@@ -25,6 +25,7 @@ dependencies {
     implementation(project(":feature:settings:api"))
     implementation(project(":feature:settings:presentation"))
     implementation(project(":feature:settings:ui-common"))
+    implementation(project(":feature:library:domain"))
 
     implementation(libs.bundles.compose.core)
     implementation(libs.bundles.navigation.serialization)

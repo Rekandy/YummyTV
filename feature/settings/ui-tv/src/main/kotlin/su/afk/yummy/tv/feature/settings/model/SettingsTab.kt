@@ -13,5 +13,6 @@ internal enum class SettingsTab(@param:StringRes val labelRes: Int) {
     SUBTITLES(R.string.settings_category_subtitles),
     STORAGE(R.string.settings_category_storage),
     API(R.string.settings_category_api),
+    LIST_SYNC(R.string.settings_category_list_sync),
     ABOUT(R.string.settings_section_about),
 }

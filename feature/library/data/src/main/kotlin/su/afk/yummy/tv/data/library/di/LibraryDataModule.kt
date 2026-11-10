@@ -6,8 +6,10 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import su.afk.yummy.tv.core.storage.library.LibraryStorage
 import su.afk.yummy.tv.data.library.repository.DefaultLibraryRepository
+import su.afk.yummy.tv.data.library.repository.DefaultListSyncRepository
 import su.afk.yummy.tv.data.library.repository.YaniWatchHistoryRepository
 import su.afk.yummy.tv.domain.library.repository.LibraryRepository
+import su.afk.yummy.tv.domain.library.repository.ListSyncRepository
 import su.afk.yummy.tv.domain.library.repository.WatchHistoryRepository
 import javax.inject.Singleton
 
@@ -22,5 +24,10 @@ object LibraryDataModule {
     @Provides
     @Singleton
     fun provideWatchHistoryRepository(impl: YaniWatchHistoryRepository): WatchHistoryRepository =
+        impl
+
+    @Provides
+    @Singleton
+    fun provideListSyncRepository(impl: DefaultListSyncRepository): ListSyncRepository =
         impl
 }

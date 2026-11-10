@@ -1,6 +1,7 @@
 package su.afk.yummy.tv.feature.settings
 
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -29,11 +30,18 @@ import su.afk.yummy.tv.core.utils.logging.AppLogExporter
 import su.afk.yummy.tv.core.storage.maintenance.StorageCleanup
 import su.afk.yummy.tv.core.utils.system.CacheStorageInspector
 import su.afk.yummy.tv.core.utils.system.ImageCacheCleaner
+import su.afk.yummy.tv.domain.library.model.ExternalService
+import su.afk.yummy.tv.domain.library.usecase.BuildExportFileUseCase
+import su.afk.yummy.tv.domain.library.usecase.GetLocalLibraryAsExternalEntriesUseCase
+import su.afk.yummy.tv.domain.library.usecase.ImportEntriesUseCase
+import su.afk.yummy.tv.domain.library.usecase.MatchImportEntriesUseCase
+import su.afk.yummy.tv.domain.library.usecase.ParseImportFileUseCase
 import su.afk.yummy.tv.domain.update.usecase.GetAppReleaseHistoryUseCase
 import su.afk.yummy.tv.domain.videodownload.usecase.ObserveVideoExportDestinationUseCase
 import su.afk.yummy.tv.domain.videodownload.usecase.SelectVideoExportDestinationUseCase
 import su.afk.yummy.tv.domain.videodownload.usecase.SetVideoDownloadWifiOnlyUseCase
 import su.afk.yummy.tv.feature.account.IAccountNavigator
+import su.afk.yummy.tv.feature.settings.presentation.R
 import su.afk.yummy.tv.feature.settings.mapper.toReleaseNoteItem
 import su.afk.yummy.tv.feature.settings.model.ReleaseNotesStatus
 import su.afk.yummy.tv.feature.settings.navigator.SettingsCategoryDestination
@@ -69,6 +77,11 @@ class SettingsViewModel @Inject internal constructor(
     private val appLogExporter: AppLogExporter,
     private val getAppReleaseHistory: GetAppReleaseHistoryUseCase,
     private val analyticsDeviceIdProvider: AnalyticsDeviceIdProvider,
+    private val parseImportFile: ParseImportFileUseCase,
+    private val matchImportEntries: MatchImportEntriesUseCase,
+    private val importEntries: ImportEntriesUseCase,
+    private val getLocalLibraryAsExternalEntries: GetLocalLibraryAsExternalEntriesUseCase,
+    private val buildExportFile: BuildExportFileUseCase,
     @param:Named("appVersionName") private val versionName: String,
 ) : BaseViewModel<SettingsState.State, SettingsState.Event, SettingsState.Effect>() {
 
@@ -491,6 +504,15 @@ class SettingsViewModel @Inject internal constructor(
                 analytics.eventLibraryTabOrderScreenOpened()
             }
 
+            SettingsState.Event.LibraryTabOrderSelected -> {
+                nav.navigate(SettingsLibraryTabOrderDestination)
+            }
+
+            SettingsState.Event.LibraryTabOrderReset -> viewModelScope.launch {
+                analytics.eventLibraryTabOrderReset()
+                settingsStore.setLibraryTabOrder(SettingsStore.defaultLibraryTabOrder)
+            }
+
             is SettingsState.Event.HomeBlockToggled -> viewModelScope.launch {
                 analytics.eventHomeBlockToggled(event.block)
                 settingsStore.setHomeBlocks(currentState.homeBlocks.toggledHomeBlock(event.block))
@@ -514,15 +536,6 @@ class SettingsViewModel @Inject internal constructor(
             SettingsState.Event.HomeBlocksReset -> viewModelScope.launch {
                 analytics.eventHomeBlocksReset()
                 settingsStore.setHomeBlocks(HomeBlockConfig.default)
-            }
-
-            SettingsState.Event.LibraryTabOrderSelected -> {
-                nav.navigate(SettingsLibraryTabOrderDestination)
-            }
-
-            SettingsState.Event.LibraryTabOrderReset -> viewModelScope.launch {
-                analytics.eventLibraryTabOrderReset()
-                settingsStore.setLibraryTabOrder(SettingsStore.defaultLibraryTabOrder)
             }
 
             is SettingsState.Event.CategorySelected -> {
@@ -608,6 +621,120 @@ class SettingsViewModel @Inject internal constructor(
                 runSuspendCatching { appLogExporter.saveToStorage(appLogExporter.buildDump()) }
                     .onSuccess { setEffect(SettingsState.Effect.LogsSaved(it)) }
                     .onFailure { setEffect(SettingsState.Effect.LogsFailed) }
+            }
+
+            is SettingsState.Event.ListSyncFileSelected -> onListSyncFileSelected(event.uri, event.service)
+
+            is SettingsState.Event.ListSyncConflictStrategyChanged ->
+                setState { copy(listSyncConflictStrategy = event.strategy) }
+
+            is SettingsState.Event.ListSyncSkipUnmatchedToggled ->
+                setState { copy(listSyncSkipUnmatched = event.skip) }
+
+            SettingsState.Event.ListSyncImportConfirmed -> onListSyncImportConfirmed()
+
+            SettingsState.Event.ListSyncImportCancelled ->
+                setState { copy(showListSyncImportDialog = false, listSyncImportPreview = persistentListOf()) }
+
+            is SettingsState.Event.ListSyncExportRequested -> onListSyncExportRequested(event.service)
+
+            SettingsState.Event.ListSyncExportConfirmed -> onListSyncExportConfirmed()
+
+            SettingsState.Event.ListSyncExportCancelled ->
+                setState { copy(showListSyncExportDialog = false) }
+
+            SettingsState.Event.ListSyncResultDismissed ->
+                setState { copy(showListSyncResultDialog = false, listSyncLastResult = null) }
+        }
+    }
+
+    private fun onListSyncFileSelected(uri: String, service: ExternalService) {
+        setState { copy(isListSyncLoading = true, listSyncImportService = service) }
+        viewModelScope.launch {
+            runSuspendCatching {
+                val parsed = parseImportFile(uri)
+                val preview = matchImportEntries(parsed.entries)
+                parsed.username to preview
+            }.onSuccess { (username, preview) ->
+                setState {
+                    copy(
+                        isListSyncLoading = false,
+                        listSyncImportPreview = preview.toImmutableList(),
+                        listSyncImportUsername = username,
+                        showListSyncImportDialog = preview.isNotEmpty(),
+                    )
+                }
+                if (preview.isEmpty()) {
+                    setEffect(SettingsState.Effect.ShowListSyncMessage(R.string.settings_list_sync_msg_empty_file))
+                }
+            }.onFailure {
+                setState { copy(isListSyncLoading = false) }
+                setEffect(SettingsState.Effect.ShowListSyncMessage(R.string.settings_list_sync_msg_parse_failed))
+            }
+        }
+    }
+
+    private fun onListSyncImportConfirmed() {
+        val items = currentState.listSyncImportPreview
+        val strategy = currentState.listSyncConflictStrategy
+        val skipUnmatched = currentState.listSyncSkipUnmatched
+        setState { copy(isListSyncImporting = true, showListSyncImportDialog = false) }
+        viewModelScope.launch {
+            runSuspendCatching { importEntries(items, strategy, skipUnmatched) }
+                .onSuccess { result ->
+                    setState {
+                        copy(
+                            isListSyncImporting = false,
+                            listSyncLastResult = result,
+                            showListSyncResultDialog = true,
+                            listSyncImportPreview = persistentListOf(),
+                        )
+                    }
+                }
+                .onFailure {
+                    setState { copy(isListSyncImporting = false) }
+                    setEffect(SettingsState.Effect.ShowListSyncMessage(R.string.settings_list_sync_msg_import_failed))
+                }
+        }
+    }
+
+    private fun onListSyncExportRequested(service: ExternalService) {
+        setState { copy(isListSyncLoading = true, listSyncExportService = service) }
+        viewModelScope.launch {
+            runSuspendCatching { getLocalLibraryAsExternalEntries() }
+                .onSuccess { entries ->
+                    setState {
+                        copy(
+                            isListSyncLoading = false,
+                            listSyncExportCount = entries.size,
+                            showListSyncExportDialog = entries.isNotEmpty(),
+                        )
+                    }
+                    if (entries.isEmpty()) {
+                        setEffect(SettingsState.Effect.ShowListSyncMessage(R.string.settings_list_sync_msg_empty_library))
+                    }
+                }
+                .onFailure {
+                    setState { copy(isListSyncLoading = false) }
+                    setEffect(SettingsState.Effect.ShowListSyncMessage(R.string.settings_list_sync_msg_library_read_failed))
+                }
+        }
+    }
+
+    private fun onListSyncExportConfirmed() {
+        val service = currentState.listSyncExportService ?: ExternalService.MAL
+        setState { copy(isListSyncExporting = true, showListSyncExportDialog = false) }
+        viewModelScope.launch {
+            runSuspendCatching {
+                val entries = getLocalLibraryAsExternalEntries()
+                buildExportFile(entries, service, "YummyTV")
+            }.onSuccess { filePath ->
+                setState { copy(isListSyncExporting = false) }
+                val mimeType = if (service == ExternalService.MAL) "text/xml" else "application/json"
+                setEffect(SettingsState.Effect.ShareListSyncFile(filePath, mimeType))
+            }.onFailure {
+                setState { copy(isListSyncExporting = false) }
+                setEffect(SettingsState.Effect.ShowListSyncMessage(R.string.settings_list_sync_msg_export_failed))
             }
         }
     }

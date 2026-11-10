@@ -45,6 +45,9 @@ import su.afk.yummy.tv.core.utils.system.restartApplicationCold
 import su.afk.yummy.tv.feature.settings.model.SettingsTab
 import su.afk.yummy.tv.feature.settings.model.SettingsTvPicker
 import su.afk.yummy.tv.feature.settings.presentation.R
+import su.afk.yummy.tv.feature.settings.view.ListSyncExportConfirmTvDialog
+import su.afk.yummy.tv.feature.settings.view.ListSyncImportPreviewTvDialog
+import su.afk.yummy.tv.feature.settings.view.ListSyncResultTvDialog
 import su.afk.yummy.tv.feature.settings.view.SettingsTvCategoryList
 import su.afk.yummy.tv.feature.settings.view.SettingsTvPanelHost
 import su.afk.yummy.tv.feature.settings.view.SettingsTvPickerPanel
@@ -137,6 +140,40 @@ fun SettingsTvScreen(
 
                 SettingsState.Effect.CacheCleared ->
                     Toast.makeText(context, R.string.settings_clear_cache_done, Toast.LENGTH_SHORT).show()
+
+                is SettingsState.Effect.ShareListSyncFile -> {
+                    val file = java.io.File(settingsEffect.path)
+                    val uri = runCatching {
+                        androidx.core.content.FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.logs",
+                            file,
+                        )
+                    }.getOrNull()
+
+                    if (uri != null) {
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = settingsEffect.mimeType
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        val canShare = context.packageManager.queryIntentActivities(send, 0).isNotEmpty()
+                        val shared = canShare && runCatching {
+                            context.startActivity(
+                                Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }.isSuccess
+                        if (!shared) {
+                            Toast.makeText(context, context.getString(R.string.settings_logs_saved, file.name), Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        Toast.makeText(context, context.getString(R.string.settings_logs_saved, file.name), Toast.LENGTH_LONG).show()
+                    }
+                }
+
+                is SettingsState.Effect.ShowListSyncMessage -> {
+                    Toast.makeText(context, settingsEffect.messageRes, Toast.LENGTH_LONG).show()
+                }
 
                 SettingsState.Effect.CacheClearFailed ->
                     Toast.makeText(context, R.string.settings_clear_cache_failed, Toast.LENGTH_LONG).show()
@@ -260,6 +297,38 @@ fun SettingsTvScreen(
                 onEvent(SettingsState.Event.InterfaceModeSelected(targetMode))
             },
             onDismiss = { pendingInterfaceMode = null },
+        )
+    }
+
+    if (state.showListSyncImportDialog) {
+        ListSyncImportPreviewTvDialog(
+            state = state,
+            onConfirm = { onEvent(SettingsState.Event.ListSyncImportConfirmed) },
+            onDismiss = { onEvent(SettingsState.Event.ListSyncImportCancelled) },
+            onStrategyChanged = {
+                onEvent(SettingsState.Event.ListSyncConflictStrategyChanged(it))
+            },
+            onSkipUnmatchedToggled = {
+                onEvent(SettingsState.Event.ListSyncSkipUnmatchedToggled(it))
+            },
+        )
+    }
+
+    if (state.showListSyncExportDialog) {
+        ListSyncExportConfirmTvDialog(
+            count = state.listSyncExportCount,
+            service = state.listSyncExportService,
+            isExporting = state.isListSyncExporting,
+            onConfirm = { onEvent(SettingsState.Event.ListSyncExportConfirmed) },
+            onDismiss = { onEvent(SettingsState.Event.ListSyncExportCancelled) },
+        )
+    }
+
+    val lastResult = state.listSyncLastResult
+    if (state.showListSyncResultDialog && lastResult != null) {
+        ListSyncResultTvDialog(
+            result = lastResult,
+            onDismiss = { onEvent(SettingsState.Event.ListSyncResultDismissed) },
         )
     }
 }

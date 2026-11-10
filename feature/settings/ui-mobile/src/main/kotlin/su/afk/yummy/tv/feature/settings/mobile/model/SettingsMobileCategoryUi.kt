@@ -10,6 +10,7 @@ import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Subtitles
+import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.ui.graphics.vector.ImageVector
 import su.afk.yummy.tv.feature.settings.navigator.SettingsCategory
@@ -27,6 +28,7 @@ internal val SettingsCategory.titleRes: Int
         SettingsCategory.SUBTITLES -> R.string.settings_category_subtitles
         SettingsCategory.STORAGE -> R.string.settings_category_storage
         SettingsCategory.API -> R.string.settings_category_api
+        SettingsCategory.LIST_SYNC -> R.string.settings_category_list_sync
     }
 
 @get:StringRes
@@ -41,6 +43,7 @@ internal val SettingsCategory.hintRes: Int
         SettingsCategory.SUBTITLES -> R.string.settings_mobile_category_subtitles_hint
         SettingsCategory.STORAGE -> R.string.settings_mobile_category_storage_hint
         SettingsCategory.API -> R.string.settings_mobile_category_api_hint
+        SettingsCategory.LIST_SYNC -> R.string.settings_mobile_category_list_sync_hint
     }
 
 internal val SettingsCategory.icon: ImageVector
@@ -54,4 +57,5 @@ internal val SettingsCategory.icon: ImageVector
         SettingsCategory.SUBTITLES -> Icons.Outlined.Subtitles
         SettingsCategory.STORAGE -> Icons.Outlined.Storage
         SettingsCategory.API -> Icons.Outlined.Key
+        SettingsCategory.LIST_SYNC -> Icons.Outlined.SwapHoriz
     }

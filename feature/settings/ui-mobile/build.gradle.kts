@@ -23,6 +23,7 @@ dependencies {
     implementation(project(":core:preferences"))
     implementation(project(":core:utils"))
     implementation(project(":feature:settings:api"))
+    implementation(project(":feature:library:domain"))
     implementation(project(":feature:settings:presentation"))
     implementation(project(":feature:settings:ui-common"))
 

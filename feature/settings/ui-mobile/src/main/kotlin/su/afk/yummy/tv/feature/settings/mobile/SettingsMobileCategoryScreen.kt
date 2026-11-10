@@ -26,6 +26,7 @@ import su.afk.yummy.tv.feature.settings.mobile.view.SettingsMobileEffects
 import su.afk.yummy.tv.feature.settings.mobile.view.category.SettingsMobileApiContent
 import su.afk.yummy.tv.feature.settings.mobile.view.category.SettingsMobileAppearanceContent
 import su.afk.yummy.tv.feature.settings.mobile.view.category.SettingsMobileGeneralContent
+import su.afk.yummy.tv.feature.settings.mobile.view.category.SettingsMobileListSyncContent
 import su.afk.yummy.tv.feature.settings.mobile.view.category.SettingsMobilePlaybackContent
 import su.afk.yummy.tv.feature.settings.mobile.view.category.SettingsMobilePlayerContent
 import su.afk.yummy.tv.feature.settings.mobile.view.category.SettingsMobileStorageContent
@@ -105,6 +106,8 @@ fun SettingsMobileCategoryScreen(
                     )
 
                     SettingsCategory.API -> SettingsMobileApiContent(state, onEvent)
+
+                    SettingsCategory.LIST_SYNC -> SettingsMobileListSyncContent(state, onEvent)
                 }
             }
         }

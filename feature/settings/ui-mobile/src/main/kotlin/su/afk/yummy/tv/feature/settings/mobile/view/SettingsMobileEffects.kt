@@ -90,6 +90,28 @@ internal fun SettingsMobileEffects(
                         R.string.settings_video_export_directory_error,
                         Toast.LENGTH_LONG,
                     ).show()
+
+                is SettingsState.Effect.ShareListSyncFile -> {
+                    val file = java.io.File(settingsEffect.path)
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.logs",
+                        file,
+                    )
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = settingsEffect.mimeType
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    runCatching {
+                        context.startActivity(
+                            Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }
+                }
+
+                is SettingsState.Effect.ShowListSyncMessage ->
+                    Toast.makeText(context, settingsEffect.messageRes, Toast.LENGTH_LONG).show()
             }
         }
     }

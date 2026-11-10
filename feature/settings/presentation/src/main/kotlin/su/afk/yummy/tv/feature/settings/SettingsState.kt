@@ -1,5 +1,6 @@
 package su.afk.yummy.tv.feature.settings
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -31,6 +32,10 @@ import su.afk.yummy.tv.core.preferences.interface_mode.AppInterfaceMode
 import su.afk.yummy.tv.core.preferences.settings.SettingsStore
 import su.afk.yummy.tv.core.utils.system.CacheStorageEntry
 import su.afk.yummy.tv.core.utils.system.PlatformInfo
+import su.afk.yummy.tv.domain.library.model.ExternalService
+import su.afk.yummy.tv.domain.library.model.ImportConflictStrategy
+import su.afk.yummy.tv.domain.library.model.SyncPreviewItem
+import su.afk.yummy.tv.domain.library.model.SyncResult
 import su.afk.yummy.tv.feature.settings.model.DetailsButtonMoveDirection
 import su.afk.yummy.tv.feature.settings.model.ReleaseNotesStatus
 import su.afk.yummy.tv.feature.settings.navigator.SettingsCategory
@@ -115,10 +120,28 @@ class SettingsState {
         /** ID устройства в аналитике, разбитый на группы по 3 цифры; null — ID недоступен. */
         val analyticsDeviceId: String? = null,
         val releaseNotes: ReleaseNotesStatus = ReleaseNotesStatus.Idle,
+        val isListSyncLoading: Boolean = false,
+        val listSyncImportPreview: ImmutableList<SyncPreviewItem> = persistentListOf(),
+        val listSyncImportService: ExternalService? = null,
+        val listSyncImportUsername: String? = null,
+        val listSyncConflictStrategy: ImportConflictStrategy = ImportConflictStrategy.UPDATE,
+        val listSyncSkipUnmatched: Boolean = false,
+        val isListSyncImporting: Boolean = false,
+        val isListSyncExporting: Boolean = false,
+        val listSyncLastResult: SyncResult? = null,
+        val showListSyncImportDialog: Boolean = false,
+        val showListSyncExportDialog: Boolean = false,
+        val listSyncExportService: ExternalService? = null,
+        val listSyncExportCount: Int = 0,
+        val showListSyncResultDialog: Boolean = false,
     ) : UiState {
         /** Задан свой токен, а не встроенный: только тогда есть что сбрасывать. */
         val isYaniApplicationTokenCustom: Boolean
             get() = yaniApplicationToken.isNotBlank() && yaniApplicationToken != YaniApplicationToken.DEFAULT
+
+        val listSyncMatchedCount: Int get() = listSyncImportPreview.count { it.localAnimeId != null }
+        val listSyncUnmatchedCount: Int get() = listSyncImportPreview.count { it.localAnimeId == null }
+        val listSyncConflictCount: Int get() = listSyncImportPreview.count { it.hasConflict }
     }
 
     /** Пользовательские действия на экране настроек. */
@@ -347,6 +370,33 @@ class SettingsState {
 
         /** Пользователь хочет сохранить дамп логов в память устройства (когда Share недоступен). */
         data object SaveLogsClicked : Event
+
+        /** Пользователь выбрал файл импорта (URI и целевой сервис). */
+        data class ListSyncFileSelected(val uri: String, val service: ExternalService) : Event
+
+        /** Пользователь выбрал стратегию разрешения конфликтов. */
+        data class ListSyncConflictStrategyChanged(val strategy: ImportConflictStrategy) : Event
+
+        /** Переключение флага пропуска несовпавших тайтлов. */
+        data class ListSyncSkipUnmatchedToggled(val skip: Boolean) : Event
+
+        /** Пользователь подтвердил выполнение импорта. */
+        data object ListSyncImportConfirmed : Event
+
+        /** Пользователь отменил импорт. */
+        data object ListSyncImportCancelled : Event
+
+        /** Пользователь запросил экспорт библиотеки в выбранный сервис. */
+        data class ListSyncExportRequested(val service: ExternalService) : Event
+
+        /** Пользователь подтвердил экспорт библиотеки. */
+        data object ListSyncExportConfirmed : Event
+
+        /** Пользователь отменил экспорт. */
+        data object ListSyncExportCancelled : Event
+
+        /** Пользователь закрыл диалог с результатом синхронизации. */
+        data object ListSyncResultDismissed : Event
     }
 
     sealed interface Effect : UiEffect {
@@ -370,5 +420,11 @@ class SettingsState {
 
         /** Кэш очистить не удалось. */
         data object CacheClearFailed : Effect
+
+        /** Передать созданный файл экспорта [path] через системный диалог "Поделиться". */
+        data class ShareListSyncFile(val path: String, val mimeType: String) : Effect
+
+        /** Показать информационное сообщение или ошибку синхронизации. */
+        data class ShowListSyncMessage(@param:StringRes val messageRes: Int) : Effect
     }
 }

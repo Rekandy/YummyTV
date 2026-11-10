@@ -28,6 +28,7 @@ import su.afk.yummy.tv.feature.settings.view.category.SettingsTvAboutContent
 import su.afk.yummy.tv.feature.settings.view.category.SettingsTvApiContent
 import su.afk.yummy.tv.feature.settings.view.category.SettingsTvAppearanceContent
 import su.afk.yummy.tv.feature.settings.view.category.SettingsTvGeneralContent
+import su.afk.yummy.tv.feature.settings.view.category.SettingsTvListSyncContent
 import su.afk.yummy.tv.feature.settings.view.category.SettingsTvPickerRow
 import su.afk.yummy.tv.feature.settings.view.category.SettingsTvPlaybackContent
 import su.afk.yummy.tv.feature.settings.view.category.SettingsTvPlayerContent
@@ -132,6 +133,13 @@ internal fun SettingsTvPanelHost(
                     )
 
                     SettingsTab.API -> SettingsTvApiContent(
+                        state,
+                        tabFocusRequester,
+                        tabContentFocusRequester,
+                        onEvent,
+                    )
+
+                    SettingsTab.LIST_SYNC -> SettingsTvListSyncContent(
                         state,
                         tabFocusRequester,
                         tabContentFocusRequester,
